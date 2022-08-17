@@ -1,9 +1,10 @@
 package main
 
 import (
-	"context"
+	context "context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"testing"
 
@@ -12,11 +13,11 @@ import (
 
 func Test_run_OK(t *testing.T) {
 	// 前処理
-	cancel, eg := doRun()
+	cancel, eg, l := doRun(t)
 
 	// エンドポイントにGETリクエストを発行
 	in := "message"
-	rsp := sendGetRequest(t, in)
+	rsp := sendGetRequest(t, l, in)
 	defer rsp.Body.Close()
 
 	// レスポンス取得
@@ -36,10 +37,10 @@ func Test_run_OK(t *testing.T) {
 
 func Test_run_NG(t *testing.T) {
 	// 前処理
-	cancel, eg := doRun()
+	cancel, eg, l := doRun(t)
 
 	in := "message"
-	rsp := sendGetRequest(t, in)
+	rsp := sendGetRequest(t, l, in)
 	defer rsp.Body.Close()
 
 	// レスポンス取得
@@ -58,20 +59,28 @@ func Test_run_NG(t *testing.T) {
 }
 
 // doRun はrun関数を実行する
-func doRun() (context.CancelFunc, *errgroup.Group) {
+func doRun(t *testing.T) (context.CancelFunc, *errgroup.Group, net.Listener) {
+	l, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %+v", err)
+	}
 	// キャンセル可能なcontext.Contextを生成
 	ctx, cancel := context.WithCancel(context.Background())
 	eg, ctx := errgroup.WithContext(ctx)
 	// 別ゴルーチンでrun関数を実行し、HTTPサーバを起動
 	eg.Go(func() error {
-		return run(ctx)
+		return run(ctx, l)
 	})
-	return cancel, eg
+	return cancel, eg, l
 }
 
 // sendGetRequest はエンドポイントにGETリクエストを発行する
-func sendGetRequest(t *testing.T, in string) *http.Response {
-	rsp, err := http.Get("http://localhost:18080/" + in)
+func sendGetRequest(t *testing.T, l net.Listener, in string) *http.Response {
+	// URL生成
+	url := fmt.Sprintf("http://%s/%s", l.Addr().String(), in)
+	t.Logf("try request to %q", url)
+	// リクエスト発行
+	rsp, err := http.Get(url)
 	if err != nil {
 		t.Errorf("failed to get: %+v", err)
 	}
