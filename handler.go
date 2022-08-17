@@ -40,7 +40,7 @@ func run(ctx context.Context, l net.Listener) error {
 
 func main() {
 	// 入力バリデーション
-	if 1 < len(os.Args) {
+	if 2 < len(os.Args) {
 		log.Printf("need port number\n")
 		os.Exit(1)
 	}
