@@ -18,3 +18,4 @@ jobs:
           golangci_lint_flags: "--config=./.golangci.yml ./..."
           fail_on_error: true
           reporter: "github_pr_review"
+    timeout-minutes: 10
