@@ -1,9 +1,12 @@
 # デプロイ用コンテナに含めるバイナリを作成するコンテナ
-FROM golang:1.19.0-bullseye as deploy-builder
+FROM golang:1.18.5-bullseye as deploy-builder
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
 RUN go build -trimpath -ldflags "-w -s" -o app
 
 # -------------------------------------------------------------
@@ -20,7 +23,7 @@ CMD ["./app"]
 # -------------------------------------------------------------
 
 # ローカル開発環境で利用するホットリロード環境
-FROM golang:1.19.0 as dev
+FROM golang:1.18.5 as dev
 
 WORKDIR /app
 # ホットリロード用ツールのインストールと実行
