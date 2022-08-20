@@ -4,16 +4,19 @@ import (
 	"context"
 	"fmt"
 	"github.com/ac0mz/go_todo_app/config"
+	"golang.org/x/sync/errgroup"
 	"log"
 	"net"
 	"net/http"
 	"os"
-
-	"golang.org/x/sync/errgroup"
+	"os/signal"
+	"syscall"
 )
 
 // run はHTTPサーバを起動する関数
 func run(ctx context.Context) error {
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	// 環境変数の読み込み
 	cfg, err := config.New()
 	if err != nil {
