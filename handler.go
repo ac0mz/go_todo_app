@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/ac0mz/go_todo_app/config"
 	"log"
 	"net"
 	"net/http"
@@ -12,7 +13,20 @@ import (
 )
 
 // run はHTTPサーバを起動する関数
-func run(ctx context.Context, l net.Listener) error {
+func run(ctx context.Context) error {
+	// 環境変数の読み込み
+	cfg, err := config.New()
+	if err != nil {
+		return err
+	}
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Port))
+	if err != nil {
+		log.Fatalf("failed to listen port %d: %v", cfg.Port, err)
+	}
+	url := fmt.Sprintf("http://%s", l.Addr().String())
+	log.Printf("start with: %v", url)
+
+	// HTTPサーバの設定
 	s := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
@@ -39,18 +53,8 @@ func run(ctx context.Context, l net.Listener) error {
 }
 
 func main() {
-	// 入力バリデーション
-	if 2 < len(os.Args) {
-		log.Printf("need port number\n")
-		os.Exit(1)
-	}
-	// 動的にポート番号を取得してrun関数を起動
-	port := os.Args[1]
-	l, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		log.Printf("failed to listen port %s: %v", port, err)
-	}
-	if err := run(context.Background(), l); err != nil {
+	if err := run(context.Background()); err != nil {
 		log.Printf("failed to terminate server: %v", err)
+		os.Exit(1)
 	}
 }
