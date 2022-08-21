@@ -11,8 +11,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Test_run_normal(t *testing.T) {
-	t.Skip("=> リファクタ中: ポート番号の動的な取得実装")
+func TestServer_Run_normal(t *testing.T) {
 	// 前処理
 	cancel, eg, l := doRun(t)
 
@@ -36,8 +35,7 @@ func Test_run_normal(t *testing.T) {
 	assertRun(t, cancel, eg)
 }
 
-func Test_run_error(t *testing.T) {
-	t.Skip("=> リファクタ中: ポート番号の動的な取得実装")
+func TestServer_Run_error(t *testing.T) {
 	// 前処理
 	cancel, eg, l := doRun(t)
 
@@ -69,9 +67,14 @@ func doRun(t *testing.T) (context.CancelFunc, *errgroup.Group, net.Listener) {
 	// キャンセル可能なcontext.Contextを生成
 	ctx, cancel := context.WithCancel(context.Background())
 	eg, ctx := errgroup.WithContext(ctx)
+	mux := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
+	})
+
 	// 別ゴルーチンでrun関数を実行し、HTTPサーバを起動
 	eg.Go(func() error {
-		return run(ctx)
+		s := NewServer(l, mux)
+		return s.Run(ctx)
 	})
 	return cancel, eg, l
 }
