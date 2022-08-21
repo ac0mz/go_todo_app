@@ -3,7 +3,7 @@
 
 DOCKER_TAG := latest
 build: ## Build docker image to deploy
-	docker build -t ac0mz/gotodo:${DOCKER_TAG} \ --target deploy ./
+	docker build -t ac0mz/gotodo:${DOCKER_TAG} --target deploy ./
 
 build-local: ## Build docker image to local development
 	docker compose build --no-cache
@@ -22,6 +22,9 @@ ps: ## Check container status
 
 test: ## Execute tests
 	go test -race -shuffle=on ./...
+
+test-detail: ## Execute tests
+	go clean -testcache && go test -v -race -shuffle=on ./...
 
 help: ## Show options
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
