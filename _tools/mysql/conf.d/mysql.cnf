@@ -1,0 +1,3 @@
+// _tools/mysql/conf.d/mysql.cnf
+[mysql]
+default_character_set=utf8mb4
