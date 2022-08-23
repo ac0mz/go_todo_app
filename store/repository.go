@@ -68,6 +68,8 @@ type Queryer interface {
 
 var (
 	// interfaceが期待通りに宣言されていることの検証用コード
+	// *sqlx.DB型をnilで初期化した値を右辺で作成後、各interfaceに代入することでコンパイラに検証させる
+	// 以下の書き方で作成する場合は、ポインタ型の値を作成する方法と異なりメモリアロケーションが発生しない
 	_ Beginner = (*sqlx.DB)(nil)
 	_ Preparer = (*sqlx.DB)(nil)
 	_ Execer   = (*sqlx.DB)(nil)

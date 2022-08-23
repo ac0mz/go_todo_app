@@ -13,7 +13,7 @@ create table `users`
 
 create table `tasks`
 (
-    `id`       BIGINT UNSIGNED NOT NULL COMMENT 'タスクID',
+    `id`       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'タスクID',
     `title`    VARCHAR(128)    NOT NULL COMMENT 'タイトル',
     `status`   VARCHAR(20)     NOT NULL COMMENT 'ステータス',
     `created`  DATETIME(6)     NOT NULL COMMENT '作成日時',
