@@ -34,7 +34,7 @@ func New(ctx context.Context, cfg *config.Config) (*sqlx.DB, func(), error) {
 	}
 
 	xdb := sqlx.NewDb(db, driverName)
-	return xdb, nil, nil
+	return xdb, func() { _ = db.Close() }, nil
 }
 
 // Beginner はトランザクションの開始操作を扱う
