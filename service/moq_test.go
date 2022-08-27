@@ -10,6 +10,78 @@ import (
 	"sync"
 )
 
+// Ensure, that TaskListerMock does implement TaskLister.
+// If this is not the case, regenerate this file with moq.
+var _ TaskLister = &TaskListerMock{}
+
+// TaskListerMock is a mock implementation of TaskLister.
+//
+//	func TestSomethingThatUsesTaskLister(t *testing.T) {
+//
+//		// make and configure a mocked TaskLister
+//		mockedTaskLister := &TaskListerMock{
+//			ListTasksFunc: func(ctx context.Context, db store.Queryer) (entity.Tasks, error) {
+//				panic("mock out the ListTasks method")
+//			},
+//		}
+//
+//		// use mockedTaskLister in code that requires TaskLister
+//		// and then make assertions.
+//
+//	}
+type TaskListerMock struct {
+	// ListTasksFunc mocks the ListTasks method.
+	ListTasksFunc func(ctx context.Context, db store.Queryer) (entity.Tasks, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// ListTasks holds details about calls to the ListTasks method.
+		ListTasks []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Db is the db argument value.
+			Db store.Queryer
+		}
+	}
+	lockListTasks sync.RWMutex
+}
+
+// ListTasks calls ListTasksFunc.
+func (mock *TaskListerMock) ListTasks(ctx context.Context, db store.Queryer) (entity.Tasks, error) {
+	if mock.ListTasksFunc == nil {
+		panic("TaskListerMock.ListTasksFunc: method is nil but TaskLister.ListTasks was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Db  store.Queryer
+	}{
+		Ctx: ctx,
+		Db:  db,
+	}
+	mock.lockListTasks.Lock()
+	mock.calls.ListTasks = append(mock.calls.ListTasks, callInfo)
+	mock.lockListTasks.Unlock()
+	return mock.ListTasksFunc(ctx, db)
+}
+
+// ListTasksCalls gets all the calls that were made to ListTasks.
+// Check the length with:
+//
+//	len(mockedTaskLister.ListTasksCalls())
+func (mock *TaskListerMock) ListTasksCalls() []struct {
+	Ctx context.Context
+	Db  store.Queryer
+} {
+	var calls []struct {
+		Ctx context.Context
+		Db  store.Queryer
+	}
+	mock.lockListTasks.RLock()
+	calls = mock.calls.ListTasks
+	mock.lockListTasks.RUnlock()
+	return calls
+}
+
 // Ensure, that TaskAdderMock does implement TaskAdder.
 // If this is not the case, regenerate this file with moq.
 var _ TaskAdder = &TaskAdderMock{}
@@ -88,74 +160,80 @@ func (mock *TaskAdderMock) AddTaskCalls() []struct {
 	return calls
 }
 
-// Ensure, that TaskListerMock does implement TaskLister.
+// Ensure, that UserRegisterMock does implement UserRegister.
 // If this is not the case, regenerate this file with moq.
-var _ TaskLister = &TaskListerMock{}
+var _ UserRegister = &UserRegisterMock{}
 
-// TaskListerMock is a mock implementation of TaskLister.
+// UserRegisterMock is a mock implementation of UserRegister.
 //
-//	func TestSomethingThatUsesTaskLister(t *testing.T) {
+//	func TestSomethingThatUsesUserRegister(t *testing.T) {
 //
-//		// make and configure a mocked TaskLister
-//		mockedTaskLister := &TaskListerMock{
-//			ListTasksFunc: func(ctx context.Context, db store.Queryer) (entity.Tasks, error) {
-//				panic("mock out the ListTasks method")
+//		// make and configure a mocked UserRegister
+//		mockedUserRegister := &UserRegisterMock{
+//			RegisterUserFunc: func(ctx context.Context, db store.Execer, u *entity.User) error {
+//				panic("mock out the RegisterUser method")
 //			},
 //		}
 //
-//		// use mockedTaskLister in code that requires TaskLister
+//		// use mockedUserRegister in code that requires UserRegister
 //		// and then make assertions.
 //
 //	}
-type TaskListerMock struct {
-	// ListTasksFunc mocks the ListTasks method.
-	ListTasksFunc func(ctx context.Context, db store.Queryer) (entity.Tasks, error)
+type UserRegisterMock struct {
+	// RegisterUserFunc mocks the RegisterUser method.
+	RegisterUserFunc func(ctx context.Context, db store.Execer, u *entity.User) error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// ListTasks holds details about calls to the ListTasks method.
-		ListTasks []struct {
+		// RegisterUser holds details about calls to the RegisterUser method.
+		RegisterUser []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Db is the db argument value.
-			Db store.Queryer
+			Db store.Execer
+			// U is the u argument value.
+			U *entity.User
 		}
 	}
-	lockListTasks sync.RWMutex
+	lockRegisterUser sync.RWMutex
 }
 
-// ListTasks calls ListTasksFunc.
-func (mock *TaskListerMock) ListTasks(ctx context.Context, db store.Queryer) (entity.Tasks, error) {
-	if mock.ListTasksFunc == nil {
-		panic("TaskListerMock.ListTasksFunc: method is nil but TaskLister.ListTasks was just called")
+// RegisterUser calls RegisterUserFunc.
+func (mock *UserRegisterMock) RegisterUser(ctx context.Context, db store.Execer, u *entity.User) error {
+	if mock.RegisterUserFunc == nil {
+		panic("UserRegisterMock.RegisterUserFunc: method is nil but UserRegister.RegisterUser was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Db  store.Queryer
+		Db  store.Execer
+		U   *entity.User
 	}{
 		Ctx: ctx,
 		Db:  db,
+		U:   u,
 	}
-	mock.lockListTasks.Lock()
-	mock.calls.ListTasks = append(mock.calls.ListTasks, callInfo)
-	mock.lockListTasks.Unlock()
-	return mock.ListTasksFunc(ctx, db)
+	mock.lockRegisterUser.Lock()
+	mock.calls.RegisterUser = append(mock.calls.RegisterUser, callInfo)
+	mock.lockRegisterUser.Unlock()
+	return mock.RegisterUserFunc(ctx, db, u)
 }
 
-// ListTasksCalls gets all the calls that were made to ListTasks.
+// RegisterUserCalls gets all the calls that were made to RegisterUser.
 // Check the length with:
 //
-//	len(mockedTaskLister.ListTasksCalls())
-func (mock *TaskListerMock) ListTasksCalls() []struct {
+//	len(mockedUserRegister.RegisterUserCalls())
+func (mock *UserRegisterMock) RegisterUserCalls() []struct {
 	Ctx context.Context
-	Db  store.Queryer
+	Db  store.Execer
+	U   *entity.User
 } {
 	var calls []struct {
 		Ctx context.Context
-		Db  store.Queryer
+		Db  store.Execer
+		U   *entity.User
 	}
-	mock.lockListTasks.RLock()
-	calls = mock.calls.ListTasks
-	mock.lockListTasks.RUnlock()
+	mock.lockRegisterUser.RLock()
+	calls = mock.calls.RegisterUser
+	mock.lockRegisterUser.RUnlock()
 	return calls
 }
