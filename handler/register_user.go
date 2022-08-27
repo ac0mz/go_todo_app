@@ -35,7 +35,7 @@ func (ru RegisterUser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// レスポンス
 	rsp := struct {
-		ID entity.UserId
+		ID entity.UserID
 	}{ID: u.ID}
 	RespondJSON(ctx, w, rsp, http.StatusOK)
 }
