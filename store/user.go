@@ -32,6 +32,6 @@ func (r *Repository) RegisterUser(ctx context.Context, db Execer, u *entity.User
 	if err != nil {
 		return err
 	}
-	u.ID = entity.UserId(id)
+	u.ID = entity.UserID(id)
 	return nil
 }
