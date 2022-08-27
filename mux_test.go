@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/ac0mz/go_todo_app/config"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
+	"github.com/ac0mz/go_todo_app/config"
 )
 
 func Test_NewMux(t *testing.T) {
@@ -18,6 +20,9 @@ func Test_NewMux(t *testing.T) {
 	cfg, err := config.New()
 	if err != nil {
 		t.Fatalf("failed to create config: %v", err)
+	}
+	if _, defined := os.LookupEnv("CI"); defined {
+		cfg.DBPort = 3306
 	}
 	// ハンドラのルータ（コントローラ）であるmuxを生成
 	mux, _, err := NewMux(ctx, cfg)
