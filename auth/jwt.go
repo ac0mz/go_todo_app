@@ -122,3 +122,60 @@ func (j JWTer) GetToken(ctx context.Context, r *http.Request) (jwt.Token, error)
 	}
 	return token, nil
 }
+
+type userIDKey struct{}
+type roleKey struct{}
+
+// SetUserID はcontext.Contextにキーバリューの形式でユーザIDを設定する
+func SetUserID(ctx context.Context, uid entity.UserID) context.Context {
+	return context.WithValue(ctx, userIDKey{}, uid)
+}
+
+// GetUserID はcontext.ContextからユーザIDを取得し、値と取得成否を返却する
+func GetUserID(ctx context.Context) (entity.UserID, bool) {
+	// any型で取得した値をentity.UserIDで型アサーションし、かつ2つ目の戻り値を受け取ることでpanicを回避
+	id, ok := ctx.Value(userIDKey{}).(entity.UserID)
+	return id, ok
+}
+
+// SetRole はcontext.Contextにキーバリューの形式でロールを設定する
+func SetRole(ctx context.Context, token jwt.Token) context.Context {
+	role, ok := token.Get(RoleKey)
+	if !ok {
+		return context.WithValue(ctx, roleKey{}, "")
+	}
+	return context.WithValue(ctx, roleKey{}, role)
+}
+
+// GetRole はcontext.Contextからロールを取得し、値と取得成否を返却する
+func GetRole(ctx context.Context) (string, bool) {
+	role, ok := ctx.Value(roleKey{}).(string)
+	return role, ok
+}
+
+// FillContext は*http.Request型の値にユーザIDやロール権限の情報を設定する
+func (j JWTer) FillContext(r *http.Request) (*http.Request, error) {
+	token, err := j.GetToken(r.Context(), r)
+	if err != nil {
+		return nil, err
+	}
+	// リクエストヘッダーのJWTを元にRedisからユーザIDを取得
+	uid, err := j.Store.Load(r.Context(), token.JwtID())
+	if err != nil {
+		return nil, err
+	}
+	ctx := SetUserID(r.Context(), uid)
+	ctx = SetRole(ctx, token)
+
+	// context.Context型の値を入れ替えた*http.Request型の値をディープコピー
+	clone := r.Clone(ctx)
+	return clone, nil
+}
+
+func IsAdmin(ctx context.Context) bool {
+	role, ok := GetRole(ctx)
+	if !ok {
+		return false
+	}
+	return role == "admin"
+}
