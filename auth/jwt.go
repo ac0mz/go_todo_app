@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/ac0mz/go_todo_app/clock"
@@ -94,4 +95,30 @@ func (j JWTer) GenerateToken(ctx context.Context, u entity.User) ([]byte, error)
 		return nil, err
 	}
 	return signed, nil
+}
+
+// GetToken はHTTPリクエストヘッダーのJWTを検証し、トークンを返却する
+func (j JWTer) GetToken(ctx context.Context, r *http.Request) (jwt.Token, error) {
+	// HTTPリクエストヘッダーからjwt.Tokenインターフェースを満たす型の値を取得
+	token, err := jwt.ParseRequest(
+		r,
+		// 署名検証用アルゴリズムと公開鍵を指定
+		jwt.WithKey(jwa.RS256, j.PublicKey),
+		// 後続処理にて時刻情報(*auth.JWTer.Clocker)をベースに検証するため、ここでの検証は無視する
+		jwt.WithValidate(false),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// 署名の検証
+	if err = jwt.Validate(token, jwt.WithClock(j.Clocker)); err != nil {
+		return nil, fmt.Errorf("GetToken: failed to validate token: %w", err)
+	}
+	// Redisに格納されたトークン存在有無チェック
+	if _, err := j.Store.Load(ctx, token.JwtID()); err != nil {
+		// 期限切れの他、手動で削除している場合もあり得る
+		return nil, fmt.Errorf("GetToken: %q expired: %w", token.JwtID(), err)
+	}
+	return token, nil
 }
