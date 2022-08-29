@@ -230,3 +230,81 @@ func (mock *RegisterUserServiceMock) RegisterUserCalls() []struct {
 	mock.lockRegisterUser.RUnlock()
 	return calls
 }
+
+// Ensure, that LoginServiceMock does implement LoginService.
+// If this is not the case, regenerate this file with moq.
+var _ LoginService = &LoginServiceMock{}
+
+// LoginServiceMock is a mock implementation of LoginService.
+//
+//	func TestSomethingThatUsesLoginService(t *testing.T) {
+//
+//		// make and configure a mocked LoginService
+//		mockedLoginService := &LoginServiceMock{
+//			LoginFunc: func(ctx context.Context, name string, password string) (string, error) {
+//				panic("mock out the Login method")
+//			},
+//		}
+//
+//		// use mockedLoginService in code that requires LoginService
+//		// and then make assertions.
+//
+//	}
+type LoginServiceMock struct {
+	// LoginFunc mocks the Login method.
+	LoginFunc func(ctx context.Context, name string, password string) (string, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Login holds details about calls to the Login method.
+		Login []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Password is the password argument value.
+			Password string
+		}
+	}
+	lockLogin sync.RWMutex
+}
+
+// Login calls LoginFunc.
+func (mock *LoginServiceMock) Login(ctx context.Context, name string, password string) (string, error) {
+	if mock.LoginFunc == nil {
+		panic("LoginServiceMock.LoginFunc: method is nil but LoginService.Login was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Name     string
+		Password string
+	}{
+		Ctx:      ctx,
+		Name:     name,
+		Password: password,
+	}
+	mock.lockLogin.Lock()
+	mock.calls.Login = append(mock.calls.Login, callInfo)
+	mock.lockLogin.Unlock()
+	return mock.LoginFunc(ctx, name, password)
+}
+
+// LoginCalls gets all the calls that were made to Login.
+// Check the length with:
+//
+//	len(mockedLoginService.LoginCalls())
+func (mock *LoginServiceMock) LoginCalls() []struct {
+	Ctx      context.Context
+	Name     string
+	Password string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Name     string
+		Password string
+	}
+	mock.lockLogin.RLock()
+	calls = mock.calls.Login
+	mock.lockLogin.RUnlock()
+	return calls
+}

@@ -23,6 +23,7 @@ func Test_NewMux(t *testing.T) {
 	}
 	if _, defined := os.LookupEnv("CI"); defined {
 		cfg.DBPort = 3306
+		cfg.RedisPort = 6379
 	}
 	// ハンドラのルータ（コントローラ）であるmuxを生成
 	mux, _, err := NewMux(ctx, cfg)
