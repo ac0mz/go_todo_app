@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/ac0mz/go_todo_app/auth"
 	"github.com/ac0mz/go_todo_app/clock"
 	"github.com/ac0mz/go_todo_app/config"
 	"github.com/ac0mz/go_todo_app/handler"
@@ -27,8 +28,25 @@ func NewMux(ctx context.Context, cfg *config.Config) (http.Handler, func(), erro
 	if err != nil {
 		return nil, cleanup, err
 	}
-	r := store.Repository{Clocker: clock.RealClocker{}}
+	clocker := clock.RealClocker{}
+	r := store.Repository{Clocker: clocker}
 	v := validator.New()
+
+	// -- auth --------------------------------
+	// POST /login
+	redisCli, err := store.NewKVS(ctx, cfg)
+	if err != nil {
+		return nil, cleanup, err
+	}
+	jwter, err := auth.NewJWTer(redisCli, clocker)
+	if err != nil {
+		return nil, cleanup, err
+	}
+	l := &handler.Login{
+		Service:   &service.Login{DB: db, Repo: &r, TokenGenerator: jwter},
+		Validator: v,
+	}
+	mux.Post("/login", l.ServeHTTP)
 
 	// -- tasks --------------------------------
 	// POST /tasks
@@ -46,7 +64,7 @@ func NewMux(ctx context.Context, cfg *config.Config) (http.Handler, func(), erro
 	mux.Get("/tasks", lt.ServeHTTP)
 
 	// -- users --------------------------------
-	// POST /tasks
+	// POST /users
 	ru := &handler.RegisterUser{
 		Service:   &service.RegisterUser{DB: db, Repo: &r},
 		Validator: v,

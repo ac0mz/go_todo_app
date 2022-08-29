@@ -12,6 +12,7 @@ import (
 const (
 	insertUser = `INSERT INTO users (name, password, role, created, modified)
 			 VALUES (?, ?, ?, ?, ?);`
+	getUser = `SELECT id, name, password, role, created, modified FROM users WHERE name = ?`
 )
 
 func (r *Repository) RegisterUser(ctx context.Context, db Execer, u *entity.User) error {
@@ -34,4 +35,12 @@ func (r *Repository) RegisterUser(ctx context.Context, db Execer, u *entity.User
 	}
 	u.ID = entity.UserID(id)
 	return nil
+}
+
+func (r *Repository) GetUser(ctx context.Context, db Queryer, name string) (*entity.User, error) {
+	u := &entity.User{}
+	if err := db.GetContext(ctx, u, getUser, name); err != nil {
+		return nil, err
+	}
+	return u, nil
 }
