@@ -58,7 +58,6 @@ func NewMux(ctx context.Context, cfg *config.Config) (http.Handler, func(), erro
 
 	// GET /tasks
 	lt := &handler.ListTask{
-		// Service: &service.ListTask{DB: db, Repo: &r},
 		Service: &service.ListTask{DB: db, Repo: &r},
 	}
 	mux.Get("/tasks", lt.ServeHTTP)
