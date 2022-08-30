@@ -12,7 +12,7 @@ func AuthMiddleware(j *auth.JWTer) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		// アクセストークンが見つからなかった場合、当該関数でリクエスト処理を終了するため認証も兼ねている
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// ユーザIDおよびロール権限をcontext.Context型の値に設定
+			// ユーザIDおよびロール権限をcontext.Context型の値に設定した*http.Request型の値を取得
 			req, err := j.FillContext(r)
 			if err != nil {
 				RespondJSON(r.Context(), w, ErrResponse{
