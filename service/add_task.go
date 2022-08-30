@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/ac0mz/go_todo_app/auth"
 	"github.com/ac0mz/go_todo_app/entity"
 	"github.com/ac0mz/go_todo_app/store"
 )
@@ -14,13 +16,18 @@ type AddTask struct {
 
 // AddTask はhandler/service.goの実装
 func (a *AddTask) AddTask(ctx context.Context, title string) (*entity.Task, error) {
+	id, ok := auth.GetUserID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("user_id not found")
+	}
 	t := &entity.Task{
+		UserID: id,
 		Title:  title,
 		Status: entity.TaskStatusTodo,
 	}
 	err := a.Repo.AddTask(ctx, a.DB, t)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to register: %w", err)
 	}
 	return t, nil
 }

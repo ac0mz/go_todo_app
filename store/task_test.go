@@ -8,13 +8,15 @@ import (
 	"github.com/ac0mz/go_todo_app/clock"
 	"github.com/ac0mz/go_todo_app/entity"
 	"github.com/ac0mz/go_todo_app/testutil"
+	"github.com/ac0mz/go_todo_app/testutil/fixture"
 	"github.com/google/go-cmp/cmp"
 	"github.com/jmoiron/sqlx"
 )
 
 func TestRepository_ListTasks(t *testing.T) {
-	ctx := context.Background()
+	t.Parallel()
 
+	ctx := context.Background()
 	// entity.Taskを作成する他ケースの実行タイミングと重複してDB操作結果が変わる可能性があるため、
 	// トランザクションを張ることで、当該テストケースの中だけのテーブル状態にする
 	tx, err := testutil.OpenDBForTest(t).BeginTxx(ctx, nil)
@@ -25,11 +27,11 @@ func TestRepository_ListTasks(t *testing.T) {
 	}
 
 	// DB状態の初期化と期待結果の準備
-	wants := prepareTask(ctx, t, tx)
+	wantUserID, wants := prepareTask(ctx, t, tx)
 
 	// 実行
 	sut := &Repository{}
-	gots, err := sut.ListTasks(ctx, tx)
+	gots, err := sut.ListTasks(ctx, tx, wantUserID)
 	if err != nil {
 		t.Fatalf("unexecuted error: %v", err)
 	}
@@ -40,29 +42,59 @@ func TestRepository_ListTasks(t *testing.T) {
 	}
 }
 
-// prepareTask はDBテストデータの仕込みを実行する
-func prepareTask(ctx context.Context, t *testing.T, con Execer) entity.Tasks {
-	// t.Helper()
-
-	// DB状態を初期化
-	if _, err := con.ExecContext(ctx, "DELETE FROM tasks;"); err != nil {
-		t.Logf("failed initialize tasks: %v", err)
+// prepareUser はDBテストデータの仕込みを実行する
+func prepareUser(ctx context.Context, t *testing.T, db Execer) entity.UserID {
+	t.Helper()
+	u := fixture.User(nil)
+	result, err := db.ExecContext(ctx,
+		`INSERT INTO users (name, password, role, created, modified)
+		VALUES (?, ?, ?, ?, ?);`, u.Name, u.Password, u.Role, u.Created, u.Modified,
+	)
+	if err != nil {
+		t.Fatalf("insert user: %v", err)
 	}
-	// テストデータ準備
+	id, err := result.LastInsertId()
+	if err != nil {
+		t.Fatalf("got user_id: %v", err)
+	}
+	return entity.UserID(id)
+}
+
+// prepareTask はDBテストデータの仕込みを実行する
+func prepareTask(ctx context.Context, t *testing.T, db Execer) (entity.UserID, entity.Tasks) {
+	t.Helper()
+	// // DB状態を初期化
+	// if _, err := db.ExecContext(ctx, "DELETE FROM tasks;"); err != nil {
+	// 	t.Logf("failed initialize tasks: %v", err)
+	// }
+	userID := prepareUser(ctx, t, db)
+	otherUserID := prepareUser(ctx, t, db)
 	c := clock.FixedClocker{}
 	wants := entity.Tasks{
-		{Title: "want task 1", Status: "todo", Created: c.Now(), Modified: c.Now()},
-		{Title: "want task 2", Status: "todo", Created: c.Now(), Modified: c.Now()},
-		{Title: "want task 3", Status: "done", Created: c.Now(), Modified: c.Now()},
+		{
+			UserID: userID, Title: "want task 1", Status: "todo",
+			Created: c.Now(), Modified: c.Now(),
+		}, {
+			UserID: userID, Title: "want task 2", Status: "done",
+			Created: c.Now(), Modified: c.Now(),
+		},
+	}
+	tasks := entity.Tasks{
+		wants[0],
+		{
+			UserID: otherUserID, Title: "not want task", Status: "todo",
+			Created: c.Now(), Modified: c.Now(),
+		},
+		wants[1],
 	}
 	// DB登録
 	// ※INSERT文末尾のセミコロンを忘れるだけでpanicが発生するため要注意
-	result, err := con.ExecContext(ctx,
-		`INSERT INTO tasks (title, status, created, modified)
-				VALUES (?, ?, ?, ?), (?, ?, ?, ?), (?, ?, ?, ?);`,
-		wants[0].Title, wants[0].Status, wants[0].Created, wants[0].Modified,
-		wants[1].Title, wants[1].Status, wants[1].Created, wants[1].Modified,
-		wants[2].Title, wants[2].Status, wants[2].Created, wants[2].Modified,
+	result, err := db.ExecContext(ctx,
+		`INSERT INTO tasks (user_id, title, status, created, modified)
+				VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?), (?, ?, ?, ?, ?);`,
+		tasks[0].UserID, tasks[0].Title, tasks[0].Status, tasks[0].Created, tasks[0].Modified,
+		tasks[1].UserID, tasks[1].Title, tasks[1].Status, tasks[1].Created, tasks[1].Modified,
+		tasks[2].UserID, tasks[2].Title, tasks[2].Status, tasks[2].Created, tasks[2].Modified,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -72,13 +104,11 @@ func prepareTask(ctx context.Context, t *testing.T, con Execer) entity.Tasks {
 		t.Fatal(err)
 	}
 	// MySQLでは複数レコード挿入時にLastInsertId()で取得される値は1件目のid値となる
-	// wants[0].ID = entity.TaskID(id)
-	// wants[1].ID = entity.TaskID(id + 1)
-	// wants[2].ID = entity.TaskID(id + 2)
-	for i, want := range wants {
-		want.ID = entity.TaskID(id + int64(i))
+	// 期待結果として反映させるため、tasks経由で[]wants.IDにLastInsertIdを格納
+	for i, task := range tasks {
+		task.ID = entity.TaskID(id + int64(i))
 	}
-	return wants
+	return userID, wants
 }
 
 func TestRepository_AddTask(t *testing.T) {
@@ -89,7 +119,7 @@ func TestRepository_AddTask(t *testing.T) {
 	c := clock.FixedClocker{}
 	var wantID int64 = 20
 	okTask := &entity.Task{
-		Title: "ok task", Status: "todo", Created: c.Now(), Modified: c.Now(),
+		UserID: 3, Title: "ok task", Status: "todo", Created: c.Now(), Modified: c.Now(),
 	}
 
 	db, mock, err := sqlmock.New()
@@ -101,9 +131,10 @@ func TestRepository_AddTask(t *testing.T) {
 	// モック設定
 	mock.ExpectExec(
 		// DATA-DOG/go-sqlmock の仕様上、エスケープが必要
-		`INSERT INTO tasks \(title, status, created, modified\) VALUES \(\?, \?, \?, \?\)`,
+		`INSERT INTO tasks \(user_id, title, status, created, modified\)
+				VALUES \(\?, \?, \?, \?, \?\)`,
 	).
-		WithArgs(okTask.Title, okTask.Status, okTask.Created, okTask.Modified).
+		WithArgs(okTask.UserID, okTask.Title, okTask.Status, okTask.Created, okTask.Modified).
 		WillReturnResult(sqlmock.NewResult(wantID, 1))
 
 	xdb := sqlx.NewDb(db, "mysql")
