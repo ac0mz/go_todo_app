@@ -81,7 +81,7 @@ func NewMux(ctx context.Context, cfg *config.Config) (http.Handler, func(), erro
 		Validator: v,
 	}
 	// ユーザ個別登録API
-	mux.Post("/users", ru.ServeHTTP)
+	mux.Post("/register", ru.ServeHTTP)
 
 	return mux, cleanup, nil
 }
