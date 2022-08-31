@@ -17,7 +17,7 @@ import (
 func NewMux(ctx context.Context, cfg *config.Config) (http.Handler, func(), error) {
 	mux := chi.NewRouter()
 
-	// GET /health
+	// ヘルスチェックAPI
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		// 静的解析エラー回避用に戻り値を明示的に破棄
@@ -33,7 +33,6 @@ func NewMux(ctx context.Context, cfg *config.Config) (http.Handler, func(), erro
 	v := validator.New()
 
 	// -- auth --------------------------------
-	// POST /login
 	redisCli, err := store.NewKVS(ctx, cfg)
 	if err != nil {
 		return nil, cleanup, err
@@ -46,30 +45,43 @@ func NewMux(ctx context.Context, cfg *config.Config) (http.Handler, func(), erro
 		Service:   &service.Login{DB: db, Repo: &r, TokenGenerator: jwter},
 		Validator: v,
 	}
+	// 一般権限認証認可API
 	mux.Post("/login", l.ServeHTTP)
 
+	mux.Route("/admin", func(r chi.Router) {
+		r.Use(handler.AuthMiddleware(jwter), handler.AdminMiddleware)
+		// 管理者権限認証認可API
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			// 静的解析エラー回避用に戻り値を明示的に破棄
+			_, _ = w.Write([]byte(`{"message": "admin only}"`))
+		})
+	})
+
 	// -- tasks --------------------------------
-	// POST /tasks
 	at := &handler.AddTask{
 		Service:   &service.AddTask{DB: db, Repo: &r},
 		Validator: v,
 	}
-	mux.Post("/tasks", at.ServeHTTP)
-
-	// GET /tasks
 	lt := &handler.ListTask{
-		// Service: &service.ListTask{DB: db, Repo: &r},
 		Service: &service.ListTask{DB: db, Repo: &r},
 	}
-	mux.Get("/tasks", lt.ServeHTTP)
+	mux.Route("/tasks", func(r chi.Router) {
+		// ログインしている場合のみ/tasksエンドポイントへのアクセスを許可する
+		r.Use(handler.AuthMiddleware(jwter))
+		// タスク個別登録API
+		r.Post("/", at.ServeHTTP)
+		// タスク一覧取得API
+		r.Get("/", lt.ServeHTTP)
+	})
 
 	// -- users --------------------------------
-	// POST /users
 	ru := &handler.RegisterUser{
 		Service:   &service.RegisterUser{DB: db, Repo: &r},
 		Validator: v,
 	}
-	mux.Post("/users", ru.ServeHTTP)
+	// ユーザ個別登録API
+	mux.Post("/register", ru.ServeHTTP)
 
 	return mux, cleanup, nil
 }

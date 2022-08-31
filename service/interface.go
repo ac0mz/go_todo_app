@@ -11,7 +11,7 @@ import (
 
 //go:generate go run github.com/matryer/moq -out moq_test.go . TaskLister TaskAdder UserRegister UserGetter TokenGenerator
 type TaskLister interface {
-	ListTasks(ctx context.Context, db store.Queryer) (entity.Tasks, error)
+	ListTasks(ctx context.Context, db store.Queryer, id entity.UserID) (entity.Tasks, error)
 }
 
 type TaskAdder interface {

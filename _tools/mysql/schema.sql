@@ -14,10 +14,14 @@ create table `users`
 create table `tasks`
 (
     `id`       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'タスクID',
+    `user_id`  BIGINT UNSIGNED NOT NULL COMMENT 'タスクを作成したユーザID',
     `title`    VARCHAR(128)    NOT NULL COMMENT 'タイトル',
     `status`   VARCHAR(20)     NOT NULL COMMENT 'ステータス',
     `created`  DATETIME(6)     NOT NULL COMMENT '作成日時',
     `modified` DATETIME(6)     NOT NULL COMMENT '更新日時',
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    CONSTRAINT `fk_user_id`
+        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+            ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='タスク';
